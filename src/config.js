@@ -164,6 +164,7 @@ A lifelong learner, I stay current with generative AI, ML products, and industry
   ],
   thesis: {
     title: "CAS-FD: Contact-Aware Temporal Sampling for Single-View Foul vs. Dive Recognition",
+    pdf: "https://arxiv.org/html/2608.17060v1",
     year: "2026",
     institution: "Premier University Chittagong",
     abstract: "Distinguishing a genuine foul from a simulated dive in football is one of the sport's most contested fine-grained recognition problems, especially from a single broadcast view without multi-angle cameras. We introduce a balanced 600-clip single-view Foul/Dive dataset and show that contact-aware sampling — concentrating the model's attention around the moment of physical contact — yields substantially improved recognition over treating all frames equally.",
