@@ -12,6 +12,8 @@
  * @property {string} description
  * @property {string} link
  * @property {string[]} skills
+ * @property {string} [image] Screenshot path, for example "/images/project-shot.png".
+ * @property {string} [imageAlt] Accessible description for the screenshot.
  */
 
 /**
@@ -20,6 +22,8 @@
  * @property {string} title
  * @property {string} dateRange
  * @property {string[]} bullets
+ * @property {string} [image] Company logo or team photo path, for example "/images/company-team.jpg".
+ * @property {string} [imageAlt] Accessible description for the image.
  */
 
 /**
@@ -60,19 +64,35 @@
 /** @type {SiteConfig} */
 export const siteConfig = {
 name: "Jahidul Islam",
-  title: "Software Engineer",
-  description: "Portfolio of Jahidul Islam - Software Engineer specializing in React, Go, and full-stack development. Passionate about building innovative solutions and community service.",
+  title: "AI/ML Engineer",
+  description: "Portfolio of Jahidul Islam, AI/ML Engineer exploring RAG, LLMs, generative AI, vector databases, and agentic AI.",
   profileImage: "/images/profile.png",
+  // Paste a YouTube watch, share, or embed URL here when the intro is published.
+  introVideoUrl: "",
   accentColor: "#1d4ed8",
   social: {
     email: "jahid.prog@gmail.com",
-    linkedin: "https://linkedin.com/in/thisisjahid",
+    linkedin: "https://www.linkedin.com/in/jahidevan/",
     github: "https://github.com/jahidprog",
   },
   resume: "/files/jahidulislam_23_nov_25.pdf",
-  aboutMe:
-    "I'm a CS engineer who loves building fast, scalable backend systems with Golang, JavaScript, Node.js, and PostgreSQL. I enjoy shaping clean API architectures, automating things with CLI tools, and occasionally jumping into React.js when a project needs a polished UI. Lately, I've been exploring AI and Machine Learning to push my skills even further. Beyond tech, I'm into science, gaming, and creating content that helps others navigate the world of programming.",
+  aboutMe: `I'm an AI/ML engineer building and scaling end-to-end systems across NLP, computer vision, and multimodal learning.
+
+My focus spans the machine learning lifecycle, from fine-tuning modern architectures to deploying low-latency APIs in production. I build high-throughput infrastructure, develop practical solutions, and optimize models for real-time performance.
+
+A lifelong learner, I stay current with generative AI, ML products, and industry trends. My goal is to bridge cutting-edge technology with real-world impact.`,
+  heroIntro: "I’m an AI/ML engineer exploring RAG, LLMs, generative AI, vector databases, and agentic systems—grounded in software engineering and computer vision research.",
   skills: [
+    "LLMs",
+    "RAG",
+    "Generative AI",
+    "Vector Databases",
+    "Agentic AI",
+    "Machine Learning",
+    "Computer Vision",
+    "NLP",
+    "Multimodal Learning",
+    "Python",
     "C/C++",
     "Go", 
     "JavaScript",
@@ -159,6 +179,8 @@ name: "Jahidul Islam",
   experience: [
     {
       company: "Programming Hero",
+      image: "/images/ph24.jpeg",
+      imageAlt: "Programming Hero team",
       title: "Digital Mavricks",
       dateRange: "Oct 2023 - Feb 2025",
       bullets: [

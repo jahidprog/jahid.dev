@@ -1,169 +1,331 @@
-import { useState } from 'react';
-import { siteConfig } from '../config';
+import { useEffect, useRef, useState } from 'react'
+import { siteConfig } from '../config'
+import { useSiteTheme } from './useSiteTheme.jsx'
 
+/*
+  Light-only research section (same palette, fonts and background as Hero /
+  About / Projects).
+
+  Uses siteConfig.thesis: title, institution, year, abstract, tech[], highlights[]
+  Optional extras:
+    thesis.poster -> poster image URL   (default: /images/thesis-poster.png)
+    thesis.pdf    -> link to the paper / PDF, shows a "Read the paper" button
+
+  What's dynamic:
+    - blocks reveal on scroll, highlights stagger in
+    - poster tile tilts toward the pointer with a glare
+    - poster lightbox: Esc / click outside to close, click the image to zoom
+    - long abstracts collapse with a "Read full abstract" toggle
+  Motion is reduced for visitors who prefer reduced motion.
+*/
+
+const POSTER_FALLBACK = '/images/thesis-poster.png'
+
+/* ---------- hooks ---------- */
+function useReducedMotion() {
+  const [reduce] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+  return reduce
+}
+
+function useInView(ref, reduce, threshold = 0.15) {
+  const [seen, setSeen] = useState(reduce)
+  useEffect(() => {
+    if (reduce || seen || !ref.current) return undefined
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setSeen(true)
+          io.disconnect()
+        }
+      },
+      { threshold }
+    )
+    io.observe(ref.current)
+    return () => io.disconnect()
+  }, [ref, reduce, seen, threshold])
+  return seen
+}
+
+function Reveal({ children, delay = 0, className = '', reduce }) {
+  const ref = useRef(null)
+  const seen = useInView(ref, reduce)
+  return (
+    <div ref={ref} data-in={seen ? '1' : '0'} className={`th-reveal ${className}`} style={{ transitionDelay: `${delay}ms` }}>
+      {children}
+    </div>
+  )
+}
+
+/* ---------- lightbox ---------- */
+function PosterLightbox({ src, alt, onClose }) {
+  const closeRef = useRef(null)
+  const [zoom, setZoom] = useState(false)
+  const [origin, setOrigin] = useState('50% 50%')
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus?.()
+    }
+  }, [onClose])
+
+  const onImgMove = (e) => {
+    if (!zoom) return
+    const r = e.currentTarget.getBoundingClientRect()
+    setOrigin(`${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`)
+  }
+
+  const onImgClick = (e) => {
+    e.stopPropagation()
+    const r = e.currentTarget.getBoundingClientRect()
+    setOrigin(`${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`)
+    setZoom((z) => !z)
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Thesis poster"
+      className="th-lightbox fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <button
+        ref={closeRef}
+        type="button"
+        onClick={onClose}
+        aria-label="Close poster"
+        className="th-close absolute right-5 top-5 rounded-lg px-4 py-2 font-data text-sm"
+      >
+        Close ×
+      </button>
+      <p className="font-data absolute bottom-5 left-1/2 -translate-x-1/2 text-xs text-white/60">
+        {zoom ? 'Move to pan · click to zoom out' : 'Click the poster to zoom in'}
+      </p>
+      <div className="max-h-[86vh] max-w-full overflow-hidden rounded-xl shadow-2xl">
+        <img
+          src={src}
+          alt={alt}
+          onClick={onImgClick}
+          onPointerMove={onImgMove}
+          className="th-lightbox-img max-h-[86vh] max-w-full object-contain"
+          style={{
+            transform: zoom ? 'scale(2.2)' : 'scale(1)',
+            transformOrigin: origin,
+            cursor: zoom ? 'zoom-out' : 'zoom-in',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+/* ---------- main ---------- */
 export default function Thesis() {
-  const thesis = siteConfig.thesis;
-  const [posterOpen, setPosterOpen] = useState(false);
-  if (!thesis) return null;
+  const reduce = useReducedMotion()
+  const siteTheme = useSiteTheme()
+  const thesis = siteConfig.thesis
+  const [posterOpen, setPosterOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const posterRef = useRef(null)
+
+  if (!thesis) return null
+
+  const poster = thesis.poster || POSTER_FALLBACK
+  const highlights = thesis.highlights || []
+  const tech = thesis.tech || []
+  const longAbstract = (thesis.abstract || '').length > 420
+
+  const onPosterMove = (e) => {
+    if (reduce || e.pointerType === 'touch' || !posterRef.current) return
+    const el = posterRef.current
+    const r = el.getBoundingClientRect()
+    const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
+    const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+    el.style.setProperty('--ry', `${((px - 0.5) * 8).toFixed(2)}deg`)
+    el.style.setProperty('--rx', `${((0.5 - py) * 6).toFixed(2)}deg`)
+    el.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`)
+    el.style.setProperty('--my', `${(py * 100).toFixed(1)}%`)
+    el.dataset.hover = '1'
+  }
+
+  const onPosterLeave = () => {
+    const el = posterRef.current
+    if (!el) return
+    el.style.setProperty('--rx', '0deg')
+    el.style.setProperty('--ry', '0deg')
+    el.dataset.hover = '0'
+  }
 
   return (
     <>
-      {/* Poster Lightbox Modal */}
       {posterOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-          onClick={() => setPosterOpen(false)}
-        >
-          <div
-            className="relative max-w-6xl w-full"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setPosterOpen(false)}
-              className="absolute -top-10 right-0 text-white/80 hover:text-white text-sm flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-              Close
-            </button>
-            <img
-              src="/images/thesis-poster.png"
-              alt="CAS-FD Thesis Poster"
-              className="w-full rounded-xl shadow-2xl"
-            />
-          </div>
-        </div>
+        <PosterLightbox
+          src={poster}
+          alt={`${thesis.title} research poster`}
+          onClose={() => setPosterOpen(false)}
+        />
       )}
 
-      <section
-        id="thesis"
-        className="relative py-20 md:py-32 bg-gradient-to-b from-gray-50 to-white overflow-hidden"
-        style={{ '--accent-color': siteConfig.accentColor }}
-      >
-        {/* Background decoration */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-400/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-400/5 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+      <section id="thesis" data-hero-theme={siteTheme.dark ? 'dark' : 'light'} className="th-root relative overflow-hidden py-24 sm:py-32">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="th-glow absolute inset-0" />
+          <div className="th-grid absolute inset-0" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20 items-start">
-
-            {/* Left side */}
-            <div className="lg:col-span-4 lg:sticky lg:top-32">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 shadow-sm">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: siteConfig.accentColor }}></div>
-                  <span className="text-sm font-medium text-gray-600">Academic Research</span>
+        <div className="relative z-10 mx-auto max-w-7xl px-6 lg:px-8">
+          {/* ===== Header ===== */}
+          <Reveal reduce={reduce}>
+            <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
+              <div className="space-y-6">
+                <div className="th-pill inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-data text-xs">
+                  <span className="relative flex h-2 w-2">
+                    <span className="th-ping absolute inline-flex h-full w-full rounded-full opacity-60" />
+                    <span className="th-dot relative inline-flex h-2 w-2 rounded-full" />
+                  </span>
+                  research
                 </div>
-                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900">Thesis</h2>
-                <div className="w-20 h-1.5 rounded-full" style={{ backgroundColor: siteConfig.accentColor }}></div>
-                <p className="text-gray-600 pt-4">
-                  My undergraduate thesis research at {thesis.institution}, exploring fine-grained video recognition in broadcast football footage.
-                </p>
+                <h2 className="th-text font-display text-5xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+                  A question
+                  <br />
+                  worth studying.
+                </h2>
               </div>
+              <span className="th-pill self-start rounded-md px-4 py-2 font-data text-xs md:self-auto">
+                B.Sc. thesis{thesis.year ? ` · ${thesis.year}` : ''}
+              </span>
             </div>
+          </Reveal>
 
-            {/* Right side - Thesis card */}
-            <div className="lg:col-span-8">
-              <div className="relative bg-white rounded-2xl border-2 border-gray-100 p-8 sm:p-10 shadow-sm hover:shadow-xl hover:border-gray-200 transition-all duration-300 group overflow-hidden">
+          {/* ===== Main ===== */}
+          <div className="mt-14 grid gap-6 lg:grid-cols-12">
+            {/* paper */}
+            <Reveal reduce={reduce} delay={80} className="lg:col-span-7">
+              <article className="th-card h-full rounded-3xl p-7 sm:p-10">
+                {thesis.institution && <p className="th-muted font-data text-xs">{thesis.institution}</p>}
+                <h3 className="th-text font-display mt-3 text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl">
+                  {thesis.title}
+                </h3>
 
-                {/* Top accent bar */}
-                <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl" style={{ backgroundColor: siteConfig.accentColor }}></div>
-
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4 mb-6">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <span
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white"
-                        style={{ backgroundColor: siteConfig.accentColor }}
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                        </svg>
-                        B.Sc. Thesis
-                      </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{thesis.year}</span>
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">{thesis.title}</h3>
-                  </div>
-
-                  {/* View Poster button */}
-                  <button
-                    onClick={() => setPosterOpen(true)}
-                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-900 hover:text-white transition-all duration-300 text-xs font-medium border border-gray-200 hover:border-gray-900"
-                    title="View Research Poster"
+                <div className="mt-6">
+                  <p
+                    id="th-abstract"
+                    className={`th-muted leading-7 ${longAbstract && !expanded ? 'line-clamp-5' : ''}`}
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    View Poster
-                  </button>
+                    {thesis.abstract}
+                  </p>
+                  {longAbstract && (
+                    <button
+                      type="button"
+                      onClick={() => setExpanded((v) => !v)}
+                      aria-expanded={expanded}
+                      aria-controls="th-abstract"
+                      className="th-link mt-3 font-data text-xs font-medium"
+                    >
+                      {expanded ? 'Show less' : 'Read full abstract'}
+                    </button>
+                  )}
                 </div>
 
-                {/* Poster thumbnail */}
-                <div
-                  className="mb-8 rounded-xl overflow-hidden border border-gray-100 cursor-pointer group/poster relative"
+                {tech.length > 0 && (
+                  <div className="mt-8">
+                    <p className="th-muted mb-3 font-data text-xs">methods & tools</p>
+                    <ul className="flex flex-wrap gap-2">
+                      {tech.map((item) => (
+                        <li key={item} className="th-chip rounded-md px-3 py-1 font-data text-xs">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {thesis.pdf && (
+                  <a
+                    href={thesis.pdf}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="th-btn-primary mt-9 inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold"
+                  >
+                    Read the paper
+                    <svg className="th-ico h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M7 17L17 7M9 7h8v8" />
+                    </svg>
+                  </a>
+                )}
+              </article>
+            </Reveal>
+
+            {/* highlights + poster */}
+            <div className="flex flex-col gap-6 lg:col-span-5">
+              {highlights.length > 0 && (
+                <Reveal reduce={reduce} delay={160}>
+                  <div className="th-card rounded-3xl p-6 sm:p-8">
+                    <p className="th-muted font-data text-xs">research highlights</p>
+                    <ul className="mt-5 space-y-4">
+                      {highlights.map((h, i) => (
+                        <li
+                          key={i}
+                          className="th-hl flex gap-4"
+                          style={{ '--i': i }}
+                        >
+                          <span aria-hidden="true" className="th-hl-bar mt-1 w-[3px] shrink-0 self-stretch rounded-full" />
+                          <p className="th-text2 text-[0.95rem] font-medium leading-6">{h}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Reveal>
+              )}
+
+              <Reveal reduce={reduce} delay={240}>
+                <button
+                  type="button"
+                  ref={posterRef}
+                  data-hover="0"
                   onClick={() => setPosterOpen(true)}
+                  onPointerMove={onPosterMove}
+                  onPointerLeave={onPosterLeave}
+                  aria-label="Open the research poster"
+                  className="th-poster group relative block w-full overflow-hidden rounded-3xl text-left"
                 >
                   <img
-                    src="/images/thesis-poster.png"
-                    alt="Thesis Poster Preview"
-                    className="w-full object-cover max-h-48 object-top transition-transform duration-300 group-hover/poster:scale-105"
+                    src={poster}
+                    alt={`${thesis.title} research poster preview`}
+                    loading="lazy"
+                    className="th-poster-img h-56 w-full object-cover object-top sm:h-64"
                   />
-                  <div className="absolute inset-0 bg-black/0 group-hover/poster:bg-black/30 transition-all duration-300 flex items-center justify-center">
-                    <span className="opacity-0 group-hover/poster:opacity-100 transition-opacity duration-300 bg-white text-gray-900 text-sm font-semibold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
-                      </svg>
-                      View Full Poster
+                  <span aria-hidden="true" className="th-poster-shade absolute inset-0" />
+                  <span aria-hidden="true" className="th-glare pointer-events-none absolute inset-0" />
+                  <span className="absolute inset-x-0 bottom-0 flex items-end justify-between p-5 text-white">
+                    <span>
+                      <span className="font-data block text-[11px] text-white/70">research poster</span>
+                      <span className="font-display text-lg font-extrabold">Explore the poster</span>
                     </span>
-                  </div>
-                </div>
-
-                {/* Abstract */}
-                <div className="mb-8">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Abstract</h4>
-                  <p className="text-gray-600 leading-relaxed text-base">{thesis.abstract}</p>
-                </div>
-
-                {/* Key Results */}
-                <div className="mb-8">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Key Results</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {thesis.highlights.map((highlight, i) => (
-                      <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100">
-                        <div className="mt-0.5 w-5 h-5 flex-shrink-0 rounded-full flex items-center justify-center" style={{ backgroundColor: `${siteConfig.accentColor}18` }}>
-                          <svg className="w-3 h-3" style={{ color: siteConfig.accentColor }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/>
-                          </svg>
-                        </div>
-                        <span className="text-sm text-gray-700 font-medium leading-snug">{highlight}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tech stack */}
-                <div>
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Technologies</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {thesis.tech.map(t => (
-                      <span key={t} className="px-3 py-1.5 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium border border-gray-200">{t}</span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hover left accent */}
-                <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ backgroundColor: siteConfig.accentColor }}></div>
-              </div>
+                    <span className="th-expand flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4 14v6h6M20 10V4h-6M4 20l7-7M20 4l-7 7" />
+                      </svg>
+                    </span>
+                  </span>
+                </button>
+              </Reveal>
             </div>
           </div>
         </div>
       </section>
+
     </>
-  );
+  )
 }
