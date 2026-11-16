@@ -66,7 +66,7 @@ export const siteConfig = {
 name: "Jahidul Islam",
   title: "AI/ML Engineer",
   description: "Portfolio of Jahidul Islam, AI/ML Engineer exploring RAG, LLMs, generative AI, vector databases, and agentic AI.",
-  profileImage: "/images/profile.png",
+  profileImage: "/images/profile.webp",
   // Paste a YouTube watch, share, or embed URL here when the intro is published.
   introVideoUrl: "",
   accentColor: "#1d4ed8",

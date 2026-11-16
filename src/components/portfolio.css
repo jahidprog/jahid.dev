@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* Styles extracted from Hero.jsx */
 
@@ -164,6 +164,32 @@
         .hero-root .hx-card-sep { border-top: 1px solid var(--line); }
         .hero-root .hx-meter { background: var(--line); }
         .hero-root .hx-meter-fill { background: var(--accent); transition: width 0.6s ease; }
+
+        .hero-badge-anchor {
+          position: relative;
+          width: min(100%, 384px);
+          height: min(620px, 82vh);
+          min-height: 520px;
+          margin: 1.5rem auto 0;
+        }
+        @media (min-width: 1024px) {
+          .hero-copy { padding-right: 350px; }
+          .hero-badge-anchor {
+            position: absolute;
+            z-index: 20;
+            top: 50%;
+            right: auto;
+            left: calc(50% - 50vw);
+            width: 100vw;
+            height: min(820px, 90vh);
+            min-height: 620px;
+            margin: 0;
+            transform: translateY(-50%);
+            pointer-events: none;
+          }
+          .hero-lanyard [role='button'],
+          .hero-lanyard > button { pointer-events: auto; }
+        }
 
         /* ===== Photo + model card: side by side on desktop ===== */
         .hero-photo-col { --photo-h: clamp(260px, 50vh, 440px); }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { siteConfig } from '../config';
 import { useSiteTheme } from './useSiteTheme.jsx';
+import LanyardBadge from './lanyard-badge.jsx';
 
 /*
   THEMING
@@ -21,11 +22,9 @@ import { useSiteTheme } from './useSiteTheme.jsx';
   each theme uses its own tuned accent.
 */
 
-const PHOTO_ON_LEFT = false; // set true to put the photo frame on the left on desktop
-
 const FALLBACK_ROLES = [
-  'Computer vision systems',
   'Deep learning research',
+  'Computer vision systems',
   'Backend & full-stack engineering',
 ];
 const FALLBACK_SKILLS = ['Python', 'PyTorch', 'YOLO', 'OpenCV', 'Go', 'React'];
@@ -91,67 +90,6 @@ function useTyped(words) {
   return text;
 }
 
-/* ---------- live "inference" simulation (decorative) ---------- */
-// Box positions are percentages of the photo frame. Tweak to fit your photo.
-const TARGETS = [
-  { label: 'person', base: 0.99, left: 12, top: 12, width: 76, height: 79 },
-  { label: 'face', base: 0.98, left: 29, top: 15, width: 42, height: 31 },
-];
-
-function usePrefersReducedMotion() {
-  const [reduce] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-  return reduce;
-}
-
-function useLiveInference(disabled) {
-  const [state, setState] = useState(() => ({
-    latency: 12.4,
-    history: Array.from({ length: 24 }, (_, i) => 12.4 + Math.sin(i / 2.2) * 1.1),
-    jitter: 0,
-    target: 0,
-  }));
-
-  // metrics tick
-  useEffect(() => {
-    if (disabled) return undefined;
-    const id = setInterval(() => {
-      setState((p) => {
-        const latency = Math.min(15.5, Math.max(10.2, p.latency + (Math.random() - 0.5) * 1.4));
-        return { ...p, latency, history: [...p.history.slice(1), latency], jitter: Math.random() };
-      });
-    }, 900);
-    return () => clearInterval(id);
-  }, [disabled]);
-
-  // tracker hops between targets
-  useEffect(() => {
-    if (disabled) return undefined;
-    const id = setInterval(() => {
-      setState((p) => ({ ...p, target: (p.target + 1) % TARGETS.length }));
-    }, 2800);
-    return () => clearInterval(id);
-  }, [disabled]);
-
-  return state;
-}
-
-function Sparkline({ values }) {
-  const min = 9;
-  const max = 16;
-  const w = 56;
-  const h = 20;
-  const pts = values
-    .map((v, i) => `${((i / (values.length - 1)) * w).toFixed(1)},${(h - 2 - ((v - min) / (max - min)) * (h - 4)).toFixed(1)}`)
-    .join(' ');
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden="true" className="shrink-0">
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export default function Hero({ theme: themeOverride } = {}) {
   const roles = useMemo(
     () => (siteConfig.roles?.length ? siteConfig.roles : FALLBACK_ROLES),
@@ -160,41 +98,6 @@ export default function Hero({ theme: themeOverride } = {}) {
   const skills = (siteConfig.skills?.length ? siteConfig.skills : FALLBACK_SKILLS).slice(0, 6);
   const typed = useTyped(roles);
 
-  const reduceMotion = usePrefersReducedMotion();
-  const live = useLiveInference(reduceMotion);
-  const target = TARGETS[live.target];
-  const confidence = Math.min(0.99, target.base - live.jitter * 0.015).toFixed(2);
-  const fps = Math.round(1000 / live.latency);
-
-  // pointer-driven tilt + crosshair (written straight to the DOM: no re-renders)
-  const [photoAspect, setPhotoAspect] = useState(0.8); // width / height of your photo
-  const frameRef = useRef(null);
-  const coordRef = useRef(null);
-
-  const onFrameMove = (e) => {
-    if (reduceMotion || e.pointerType === 'touch' || !frameRef.current) return;
-    const el = frameRef.current;
-    const r = el.getBoundingClientRect();
-    const px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    const py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
-    el.style.setProperty('--ry', `${((px - 0.5) * 10).toFixed(2)}deg`);
-    el.style.setProperty('--rx', `${((0.5 - py) * 8).toFixed(2)}deg`);
-    el.style.setProperty('--mx', `${(px * 100).toFixed(1)}%`);
-    el.style.setProperty('--my', `${(py * 100).toFixed(1)}%`);
-    el.dataset.hover = '1';
-    if (coordRef.current) coordRef.current.textContent = `x ${px.toFixed(2)}  y ${py.toFixed(2)}`;
-  };
-
-  const onFrameLeave = () => {
-    const el = frameRef.current;
-    if (!el) return;
-    el.style.setProperty('--rx', '0deg');
-    el.style.setProperty('--ry', '0deg');
-    el.dataset.hover = '0';
-  };
-
-  const projectCount = siteConfig.projects?.length || 7;
-  const experienceCount = siteConfig.experience?.length || 1;
   const status = siteConfig.status || 'open to work';
 
   const site = useSiteTheme();
@@ -205,12 +108,6 @@ export default function Hero({ theme: themeOverride } = {}) {
   const rootStyle = {
     ...(siteConfig.accentColor ? { '--accent': siteConfig.accentColor } : {}),
   };
-
-  const specRows = [
-    ['projects', `${projectCount}+`],
-    ['experience', `${experienceCount}+ yr`],
-    ['status', status],
-  ];
 
   return (
     <>
@@ -255,16 +152,35 @@ export default function Hero({ theme: themeOverride } = {}) {
         {/* ---------- Content ---------- */}
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-24 md:pb-20 md:pt-28 lg:pb-10 lg:pt-24">
           <div
-            className={`grid items-start gap-14 lg:gap-12 ${
-              PHOTO_ON_LEFT ? 'lg:grid-cols-[auto_minmax(0,1fr)]' : 'lg:grid-cols-[minmax(0,1fr)_auto]'
-            }`}
+            className="grid items-center"
           >
             {/* Text column */}
             <div
-              className={`order-2 space-y-8 ${
-                PHOTO_ON_LEFT ? 'lg:order-2' : 'lg:order-1'
-              }`}
+              className="hero-copy relative self-center space-y-8"
             >
+              {/* The badge is first in the mobile layout and overlays the hero on desktop. */}
+              {siteConfig.profileImage && (
+                <div className="hero-badge-anchor">
+                  <LanyardBadge
+                    className="hero-lanyard"
+                    height="100%"
+                    background="transparent"
+                    photo="/images/profile.png"
+                    name={siteConfig.name}
+                    role="AI/ML Engineer"
+                    title="AI Engineer"
+                    cardWidth={260}
+                    anchorX={0.76}
+                    skills={skills}
+                    accentColor={isDark ? '#38bdf8' : (siteConfig.accentColor || '#2563eb')}
+                    inkColor={isDark ? '#7dd3fc' : '#1d4ed8'}
+                    cardColor={isDark ? '#101827' : '#f8fafc'}
+                    textColor={isDark ? '#e8edf7' : '#0f172a'}
+                    flipButton={false}
+                  />
+                </div>
+              )}
+
               <div className="hero-in hx-pill inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-data text-xs">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 hx-dot" />
@@ -367,138 +283,6 @@ export default function Hero({ theme: themeOverride } = {}) {
                 </div>
               </div>
             </div>
-
-            {/* Photo frame + model card */}
-            {siteConfig.profileImage && (
-              <div
-                className={`hero-in hero-photo-col order-1 mx-auto flex w-full max-w-sm flex-col gap-5 lg:mx-0 lg:max-w-none lg:flex-row lg:items-stretch ${
-                  PHOTO_ON_LEFT ? 'lg:order-1' : 'lg:order-2'
-                }`}
-                style={{ animationDelay: '0.25s', '--photo-aspect': photoAspect }}
-              >
-                <div
-                  ref={frameRef}
-                  className="hero-tilt relative"
-                  data-hover="0"
-                  onPointerMove={onFrameMove}
-                  onPointerLeave={onFrameLeave}
-                >
-                  {/* rulers */}
-                  <span aria-hidden="true" className="hero-ruler-y absolute -left-4 bottom-0 top-0 w-2.5" />
-                  <span aria-hidden="true" className="hero-ruler-x absolute -top-4 left-0 right-0 h-2.5" />
-
-                  <div
-                    className="hx-frame relative w-full overflow-hidden rounded-[1.75rem]"
-                    style={{ aspectRatio: photoAspect }}
-                  >
-                    <img
-                      ref={(img) => {
-                        if (img?.complete && img.naturalWidth) setPhotoAspect(img.naturalWidth / img.naturalHeight);
-                      }}
-                      src={siteConfig.profileImage}
-                      alt={siteConfig.name}
-                      className="h-full w-full object-cover"
-                      loading="eager"
-                      onLoad={(e) => setPhotoAspect(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
-                    />
-                    <div className="hero-photo-fade absolute inset-0" />
-
-                    {/* tracker box: hops between targets, confidence updates live */}
-                    <div
-                      aria-hidden="true"
-                      className="hx-box hero-track absolute rounded-sm"
-                      style={{
-                        left: `${target.left}%`,
-                        top: `${target.top}%`,
-                        width: `${target.width}%`,
-                        height: `${target.height}%`,
-                      }}
-                    >
-                      <span className="hx-box-label absolute -top-px left-[-2px] -translate-y-full whitespace-nowrap px-2 py-0.5 font-data text-[11px] font-medium tabular-nums">
-                        {target.label} {confidence}
-                      </span>
-                    </div>
-
-                    <div aria-hidden="true" className="hero-scan hx-scan absolute inset-x-0 h-px" />
-
-                    {[
-                      'left-3 top-3 border-l-2 border-t-2',
-                      'right-3 top-3 border-r-2 border-t-2',
-                      'bottom-3 left-3 border-b-2 border-l-2',
-                      'bottom-3 right-3 border-b-2 border-r-2',
-                    ].map((c) => (
-                      <span key={c} aria-hidden="true" className={`hx-bracket absolute h-5 w-5 ${c}`} />
-                    ))}
-
-                    {/* crosshair + glare follow the pointer */}
-                    <div aria-hidden="true" className="hero-cross hero-cross-x pointer-events-none absolute inset-x-0 h-px" />
-                    <div aria-hidden="true" className="hero-cross hero-cross-y pointer-events-none absolute inset-y-0 w-px" />
-                    <div aria-hidden="true" className="hero-glare pointer-events-none absolute inset-0" />
-                    <span
-                      ref={coordRef}
-                      aria-hidden="true"
-                      className="hero-coords hx-box-label pointer-events-none absolute bottom-3 right-10 px-2 py-0.5 font-data text-[10px] tabular-nums"
-                    >
-                      x 0.00  y 0.00
-                    </span>
-                  </div>
-                </div>
-
-                {/* model card */}
-                <div className="hx-card flex flex-col overflow-hidden rounded-[1.75rem] font-data text-sm lg:w-[16.5rem] lg:shrink-0">
-                  <div className="hx-card-head flex items-center justify-between px-4 py-2 text-xs">
-                    <span>model_card</span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full hx-dot" />
-                      ready
-                    </span>
-                  </div>
-                  <dl className="flex flex-1 flex-col">
-                    {specRows.map(([k, v]) => (
-                      <div key={k} className="hx-row grid flex-1 grid-cols-[5.25rem_1fr] items-center gap-3 px-4 py-2">
-                        <dt className="hx-muted">{k}</dt>
-                        <dd className="hx-text break-words">{v}</dd>
-                      </div>
-                    ))}
-                  </dl>
-
-                  {/* live telemetry */}
-                  <div className="hx-card-head hx-card-sep flex items-center justify-between px-4 py-2 text-xs">
-                    <span>inference</span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 hx-dot" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full hx-dot" />
-                      </span>
-                      live
-                    </span>
-                  </div>
-                  <div className="hx-row grid flex-1 grid-cols-[5.25rem_1fr] items-center gap-3 px-4 py-2">
-                    <span className="hx-muted">latency</span>
-                    <span className="hx-text flex items-center justify-between gap-3 tabular-nums">
-                      {live.latency.toFixed(1)} ms
-                      <Sparkline values={live.history} />
-                    </span>
-                  </div>
-                  <div className="hx-row grid flex-1 grid-cols-[5.25rem_1fr] items-center gap-3 px-4 py-2">
-                    <span className="hx-muted">throughput</span>
-                    <span className="hx-text tabular-nums">{fps} fps</span>
-                  </div>
-                  <div className="hx-row grid flex-1 grid-cols-[5.25rem_1fr] items-center gap-3 px-4 py-2">
-                    <span className="hx-muted">confidence</span>
-                    <span className="hx-text flex items-center justify-between gap-3 tabular-nums">
-                      {confidence}
-                      <span className="hx-meter relative h-1.5 w-[56px] overflow-hidden rounded-full">
-                        <span
-                          className="hx-meter-fill absolute inset-y-0 left-0 rounded-full"
-                          style={{ width: `${Number(confidence) * 100}%` }}
-                        />
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
