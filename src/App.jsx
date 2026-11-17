@@ -8,21 +8,26 @@ import Hero from './components/Hero'
 import Projects from './components/Projects'
 import SEOHead from './components/SEOHead'
 import Thesis from './components/Thesis'
+import IntroVideo from './components/IntroVideo'
+import IntroModal from './components/IntroModal'
+import { SiteThemeProvider } from './components/useSiteTheme.jsx'
 
 function App() {
   return (
-    <>
-    <SEOHead/>
-    <Header/>
-    <Hero/>
-    <About/>
-    <Thesis/>
-    <Projects/>
-    <Experience/>
-    <Education/>
-    <Activities/>
-    <Footer/>
-    </>
+    <SiteThemeProvider>
+      <IntroModal />
+      <SEOHead />
+      <Header />
+      <Hero />
+      <IntroVideo />
+      <About />
+      <Projects />
+      <Thesis />
+      <Experience />
+      <Education />
+      <Activities />
+      <Footer />
+    </SiteThemeProvider>
   )
 }
 
