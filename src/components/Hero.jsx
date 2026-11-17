@@ -113,7 +113,7 @@ export default function Hero({ theme: themeOverride } = {}) {
     <>
       <div
         id="hero"
-        className="hero-root relative flex min-h-screen items-center overflow-hidden"
+        className="hero-root relative flex min-h-screen items-center overflow-visible"
         data-hero-theme={isDark ? 'dark' : 'light'}
         style={rootStyle}
       >
@@ -150,7 +150,7 @@ export default function Hero({ theme: themeOverride } = {}) {
         </div>
 
         {/* ---------- Content ---------- */}
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-16 pt-24 md:pb-20 md:pt-28 lg:pb-10 lg:pt-24">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 pb-12 pt-20 sm:px-6 sm:pb-16 sm:pt-24 md:pb-20 md:pt-28 lg:pb-10 lg:pt-24">
           <div
             className="grid items-center"
           >
@@ -158,28 +158,7 @@ export default function Hero({ theme: themeOverride } = {}) {
             <div
               className="hero-copy relative self-center space-y-8"
             >
-              {/* The badge is first in the mobile layout and overlays the hero on desktop. */}
-              {siteConfig.profileImage && (
-                <div className="hero-badge-anchor">
-                  <LanyardBadge
-                    className="hero-lanyard"
-                    height="100%"
-                    background="transparent"
-                    photo="/images/profile.png"
-                    name={siteConfig.name}
-                    role="AI/ML Engineer"
-                    title="AI Engineer"
-                    cardWidth={260}
-                    anchorX={0.76}
-                    skills={skills}
-                    accentColor={isDark ? '#38bdf8' : (siteConfig.accentColor || '#2563eb')}
-                    inkColor={isDark ? '#7dd3fc' : '#1d4ed8'}
-                    cardColor={isDark ? '#101827' : '#f8fafc'}
-                    textColor={isDark ? '#e8edf7' : '#0f172a'}
-                    flipButton={false}
-                  />
-                </div>
-              )}
+              {siteConfig.profileImage && <div className="hero-badge-spacer" aria-hidden="true" />}
 
               <div className="hero-in hx-pill inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-data text-xs">
                 <span className="relative flex h-2 w-2">
@@ -285,6 +264,30 @@ export default function Hero({ theme: themeOverride } = {}) {
             </div>
           </div>
         </div>
+
+        {siteConfig.profileImage && (
+          <div className="hero-badge-anchor">
+            <LanyardBadge
+              className="hero-lanyard"
+              height="100%"
+              background="transparent"
+              photo="/images/profile.png"
+              name={siteConfig.name}
+              role="AI/ML Engineer"
+              title="AI Engineer"
+              cardWidth={260}
+              anchorX={0.76}
+              physicsHeight="responsive"
+              dragLimitSelector="#intro-video"
+              skills={skills}
+              accentColor={isDark ? '#38bdf8' : (siteConfig.accentColor || '#2563eb')}
+              inkColor={isDark ? '#7dd3fc' : '#1d4ed8'}
+              cardColor={isDark ? '#101827' : '#f8fafc'}
+              textColor={isDark ? '#e8edf7' : '#0f172a'}
+              flipButton={false}
+            />
+          </div>
+        )}
 
         <a
           href="#intro-video"

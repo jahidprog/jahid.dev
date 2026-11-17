@@ -61,8 +61,8 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-5">
-      <nav aria-label="Main navigation" className={`mx-auto flex max-w-5xl items-center justify-between rounded-2xl border px-3 py-2 transition-all duration-300 sm:rounded-full sm:px-4 ${darkMode ? 'border-white/10 bg-slate-950/90 shadow-lg shadow-black/20 backdrop-blur-xl' : 'border-slate-200/70 bg-white/90 shadow-lg shadow-slate-900/5 backdrop-blur-xl'}`}>
+    <header className="fixed inset-x-0 top-0 z-50 px-2 pt-2 sm:px-6 sm:pt-4">
+      <nav aria-label="Main navigation" className={`mx-auto flex max-w-5xl items-center justify-between rounded-2xl border px-2 py-1.5 transition-all duration-300 sm:rounded-full sm:px-4 sm:py-2 ${darkMode ? 'border-white/10 bg-slate-950/90 shadow-lg shadow-black/20 backdrop-blur-xl' : 'border-slate-200/70 bg-white/90 shadow-lg shadow-slate-900/5 backdrop-blur-xl'}`}>
         <a href="#hero" onClick={closeMenu} className={`flex shrink-0 items-center gap-2 rounded-full px-2 py-1.5 text-sm font-bold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500 font-mono text-xs text-white">JI</span>
           <span className="hidden sm:inline">{siteConfig.name}</span>
@@ -72,9 +72,9 @@ export default function Header() {
           {links.map(({ id, label }) => <a key={id} href={`#${id}`} onClick={(event) => navigateTo(event, id)} aria-current={active === id ? 'location' : undefined} className={`relative rounded-full px-3.5 py-2 text-sm font-medium transition ${active === id ? (darkMode ? 'bg-white text-slate-950' : 'bg-slate-900 text-white') : (darkMode ? 'text-slate-300 hover:bg-white/10 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950')}`}>{label}</a>)}
         </div>
 
-        <button type="button" onClick={() => setDarkMode(!darkMode)} aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`} aria-pressed={darkMode} className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg transition ${darkMode ? 'text-amber-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`} title={`${darkMode ? 'Light' : 'Dark'} mode`}>{darkMode ? '☀' : '☾'}</button>
+        <button type="button" onClick={() => setDarkMode(!darkMode)} aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`} aria-pressed={darkMode} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg transition sm:h-10 sm:w-10 ${darkMode ? 'text-amber-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`} title={`${darkMode ? 'Light' : 'Dark'} mode`}>{darkMode ? '☀' : '☾'}</button>
         <a href={`mailto:${siteConfig.social.email}`} className="hidden items-center gap-2 rounded-full bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600 sm:inline-flex">Let’s talk <span aria-hidden="true">↗</span></a>
-        <button type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className={`flex h-10 w-10 items-center justify-center rounded-full transition md:hidden ${darkMode ? 'text-white hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'}`}>
+        <button type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className={`flex h-9 w-9 items-center justify-center rounded-full transition sm:h-10 sm:w-10 md:hidden ${darkMode ? 'text-white hover:bg-white/10' : 'text-slate-800 hover:bg-slate-100'}`}>
           <span className="text-xl leading-none">{menuOpen ? '×' : '☰'}</span>
         </button>
       </nav>

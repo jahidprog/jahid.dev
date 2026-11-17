@@ -258,6 +258,8 @@ export default function LanyardBadge({
   loadFonts = true,
   cardWidth = 240,
   anchorX = 0.5,
+  physicsHeight = "container",
+  dragLimitSelector,
   height = "100svh",
   className = "",
   style,
@@ -326,6 +328,8 @@ export default function LanyardBadge({
     let dpr = 1
     let W = 1
     let H = 1
+    let rootLeft = 0
+    let rootTop = 0
     let strapTex = null
     let plainTex = null
     const spin = { a: 0, v: 0 }
@@ -354,20 +358,43 @@ export default function LanyardBadge({
       plainTex = makeStrap(lowLen + 4, sw * 0.8, dpr, { ...opts, plain: true })
     }
 
-    const build = () => {
+    const build = (preserveMotion = false) => {
+      const previousPoints = preserveMotion ? pts.map((p) => ({ ...p })) : null
+      const previousW = W
+      const previousRootLeft = rootLeft
+      const previousRootTop = rootTop
+      const previousCenter =
+        previousW >= 1024
+          ? previousW * anchorX
+          : previousW * (0.5 + (anchorX - 0.5) * Math.max(0, Math.min(1, (previousW - 640) / 384)))
       dpr = Math.min(window.devicePixelRatio || 1, 2)
       W = Math.max(1, root.clientWidth)
       H = Math.max(1, root.clientHeight)
+      const rootRect = root.getBoundingClientRect()
+      rootLeft = rootRect.left
+      rootTop = rootRect.top
       canvas.width = Math.round(W * dpr)
       canvas.height = Math.round(H * dpr)
 
+      let referenceHeight = H
+      if (physicsHeight === "responsive") {
+        referenceHeight =
+          window.innerWidth < 1024 ? 620 : Math.min(820, window.innerHeight * 0.9)
+      } else if (physicsHeight === "viewport") {
+        referenceHeight = Math.min(820, window.innerHeight * 0.9)
+      } else if (typeof physicsHeight === "number") {
+        referenceHeight = physicsHeight
+      }
+      const hangH = Math.max(1, Math.min(H, referenceHeight))
+
       pts = []
       links = []
-      const cx = W >= 1024 ? W * anchorX : W / 2
+      const anchorBlend = Math.max(0, Math.min(1, (W - 640) / 384))
+      const cx = W * (0.5 + (anchorX - 0.5) * anchorBlend)
       const spread = Math.min(W * 0.16, cw * 0.55)
       const top = -sw * 2
       // hang the buckle so the whole card fits, but never above a sixth of the frame
-      const bY = Math.max(H * 0.16, Math.min(H * 0.42, H - (lowLen + ringR * 2 + clipH + ch) - 28))
+      const bY = Math.max(hangH * 0.16, Math.min(hangH * 0.42, hangH - (lowLen + ringR * 2 + clipH + ch) - 28))
 
       const aL = add(cx - spread, top, 0)
       iB = add(cx, bY, 1.4)
@@ -385,12 +412,41 @@ export default function LanyardBadge({
 
       makeTextures()
 
-      if (reduced) {
+      if (previousPoints && previousPoints.length === pts.length) {
+        const dx = cx - previousCenter + previousRootLeft - rootLeft
+        const dy = previousRootTop - rootTop
+        const fixedAnchors = new Set([left[0], right[0]])
+        pts = pts.map((point, index) => {
+          if (fixedAnchors.has(index)) {
+            return { ...point, y: point.y + dy, py: point.py + dy }
+          }
+          const previous = previousPoints[index]
+          return {
+            ...point,
+            x: previous.x + dx,
+            px: previous.px + dx,
+            y: previous.y + dy,
+            py: previous.py + dy,
+            w: previous.w,
+          }
+        })
+        if (drag) {
+          drag.tx += dx
+          drag.ty += dy
+          drag.sx = drag.clientX - rootLeft
+          drag.sy = drag.clientY - rootTop
+          drag.moved = true
+          drag.ox = drag.tx - drag.sx
+          drag.oy = drag.ty - drag.sy
+        }
+      }
+
+      if (reduced && !previousPoints) {
         for (let i = 0; i < 900; i++) {
           integrate(pts, STEP, GRAVITY, 0.98)
           solve(pts, links, ITER)
         }
-      } else {
+      } else if (!previousPoints) {
         // enter mid-swing, as if someone just let go of it
         pts[iC].x += cw * 0.55
         pts[iC].px = pts[iC].x - 2
@@ -498,6 +554,27 @@ export default function LanyardBadge({
       const r = root.getBoundingClientRect()
       return [e.clientX - r.left, e.clientY - r.top]
     }
+    const clampDragTarget = (x, y) => {
+      const rootRect = root.getBoundingClientRect()
+      const minX = cw / 2
+      const maxX = Math.max(minX, W - cw / 2)
+      const cardBottomOffset = ringR + Math.hypot(cw, ch) / 2
+      let maxY = H - cardBottomOffset
+
+      if (dragLimitSelector) {
+        const limitSection = document.querySelector(dragLimitSelector)
+        if (limitSection) {
+          const sectionRect = limitSection.getBoundingClientRect()
+          const sectionMidpoint = (sectionRect.top + sectionRect.bottom) / 2
+          maxY = Math.min(maxY, sectionMidpoint - rootRect.top - cardBottomOffset)
+        }
+      }
+
+      return [
+        Math.min(maxX, Math.max(minX, x)),
+        Math.min(Math.max(0, maxY), Math.max(0, y)),
+      ]
+    }
     const flip = () => {
       spinTarget = spinTarget === 0 ? Math.PI : 0
       setShowBack(spinTarget !== 0)
@@ -507,7 +584,19 @@ export default function LanyardBadge({
       if (e.button > 0) return
       const [x, y] = local(e)
       const T = pts[iT]
-      drag = { id: e.pointerId, ox: T.x - x, oy: T.y - y, tx: T.x, ty: T.y, sx: x, sy: y, moved: false }
+      const [tx, ty] = clampDragTarget(T.x, T.y)
+      drag = {
+        id: e.pointerId,
+        ox: tx - x,
+        oy: ty - y,
+        tx,
+        ty,
+        sx: x,
+        sy: y,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        moved: false,
+      }
       pts[iT].w = 0
       card.setPointerCapture(e.pointerId)
       card.style.cursor = "grabbing"
@@ -515,8 +604,11 @@ export default function LanyardBadge({
     const onMove = (e) => {
       if (!drag || e.pointerId !== drag.id) return
       const [x, y] = local(e)
-      drag.tx = x + drag.ox
-      drag.ty = y + drag.oy
+      const [tx, ty] = clampDragTarget(x + drag.ox, y + drag.oy)
+      drag.tx = tx
+      drag.ty = ty
+      drag.clientX = e.clientX
+      drag.clientY = e.clientY
       if (Math.hypot(x - drag.sx, y - drag.sy) > 5) drag.moved = true
     }
     const onUp = (e) => {
@@ -586,12 +678,26 @@ export default function LanyardBadge({
     window.addEventListener(FONT_EVENT, refreshFonts)
 
     let observer = null
+    let resizeFrame = 0
     if (typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(() => {
         if (Math.abs(root.clientWidth - W) < 1 && Math.abs(root.clientHeight - H) < 1) return
-        build()
-        draw()
-        place()
+        if (resizeFrame) return
+        resizeFrame = requestAnimationFrame(() => {
+          resizeFrame = 0
+          if (!alive) return
+          if (Math.abs(root.clientWidth - W) < 1 && Math.abs(root.clientHeight - H) < 1) return
+          build(true)
+          if (drag) {
+            const [tx, ty] = clampDragTarget(drag.tx, drag.ty)
+            drag.tx = tx
+            drag.ty = ty
+            drag.ox = tx - (drag.clientX - rootLeft)
+            drag.oy = ty - (drag.clientY - rootTop)
+          }
+          draw()
+          place()
+        })
       })
       observer.observe(root)
     }
@@ -599,6 +705,7 @@ export default function LanyardBadge({
     return () => {
       alive = false
       cancelAnimationFrame(raf)
+      if (resizeFrame) cancelAnimationFrame(resizeFrame)
       if (observer) observer.disconnect()
       window.removeEventListener(FONT_EVENT, refreshFonts)
       card.removeEventListener("pointerdown", onDown)
@@ -606,7 +713,7 @@ export default function LanyardBadge({
       card.removeEventListener("pointerup", onUp)
       card.removeEventListener("pointercancel", onUp)
     }
-  }, [reduced, cw, ch, ringR, clipH, lookKey, anchorX])
+  }, [reduced, cw, ch, ringR, clipH, lookKey, anchorX, physicsHeight, dragLimitSelector])
 
   // ---- card faces ----------------------------------------------------------
   const face = {

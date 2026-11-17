@@ -166,29 +166,24 @@
         .hero-root .hx-meter-fill { background: var(--accent); transition: width 0.6s ease; }
 
         .hero-badge-anchor {
-          position: relative;
-          width: min(100%, 384px);
-          height: min(620px, 82vh);
-          min-height: 520px;
-          margin: 1.5rem auto 0;
+          position: absolute;
+          z-index: 20;
+          top: clamp(80px, 12vh, 96px);
+          left: 0;
+          right: 0;
+          bottom: -130vh;
+          pointer-events: none;
         }
+        .hero-badge-spacer { height: 620px; }
+        .hero-lanyard [role='button'],
+        .hero-lanyard > button { pointer-events: auto; }
         @media (min-width: 1024px) {
           .hero-copy { padding-right: 350px; }
           .hero-badge-anchor {
-            position: absolute;
-            z-index: 20;
-            top: 50%;
-            right: auto;
-            left: calc(50% - 50vw);
-            width: 100vw;
-            height: min(820px, 90vh);
-            min-height: 620px;
-            margin: 0;
-            transform: translateY(-50%);
-            pointer-events: none;
+            top: 0;
+            bottom: -130vh;
           }
-          .hero-lanyard [role='button'],
-          .hero-lanyard > button { pointer-events: auto; }
+          .hero-badge-spacer { display: none; }
         }
 
         /* ===== Photo + model card: side by side on desktop ===== */
